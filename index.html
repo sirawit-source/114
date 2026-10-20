@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ภารกิจกู้ภัยอวกาศ: Space Rescue Mission - แนวคิดเชิงคำนวณ ม.1</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Prompt & Kanit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            font-family: 'Prompt', 'Kanit', sans-serif;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Pulsing & Floating Animations */
+        @keyframes floatSlow {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-10px) rotate(1deg); }
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.6)); }
+            50% { filter: drop-shadow(0 0 25px rgba(59, 130, 246, 0.9)); }
+        }
+
+        @keyframes fireAlert {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.15); }
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(1000%); }
+        }
+
+        .animate-float {
+            animation: floatSlow 4s ease-in-out infinite;
+        }
+
+        .animate-pulse-glow {
+            animation: pulseGlow 2.5s infinite;
+        }
+
+        .animate-fire {
+            animation: fireAlert 1s infinite;
+        }
+
+        /* Space Glow Effects */
+        .glow-box-purple {
+            box-shadow: 0 0 25px -5px rgba(168, 85, 247, 0.4), inset 0 0 15px rgba(168, 85, 247, 0.2);
+        }
+
+        .glow-box-cyan {
+            box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.4), inset 0 0 15px rgba(6, 182, 212, 0.2);
+        }
+
+        .glow-box-emerald {
+            box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.5), inset 0 0 15px rgba(16, 185, 129, 0.2);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen overflow-x-hidden flex flex-col justify-between relative selection:bg-purple-500 selection:text-white">
+
+    <!-- Background Canvas for Interactive Space Stars -->
+    <canvas id="spaceCanvas" class="fixed inset-0 pointer-events-none z-0"></canvas>
+
+    <!-- MAIN APP WRAPPER -->
+    <div class="relative z-10 min-h-screen flex flex-col justify-between p-3 sm:p-6 max-w-5xl mx-auto w-full">
+        
+        <!-- HEADER / NAVIGATION BAR -->
+        <header class="bg-slate-900/80 backdrop-blur-md border border-purple-500/30 rounded-2xl p-3 sm:p-4 mb-4 flex flex-wrap items-center justify-between gap-3 shadow-lg glow-box-purple">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-tr from-purple-600 to-cyan-400 flex items-center justify-center text-xl sm:text-2xl text-white shadow-md animate-pulse-glow">
+                    <i class="fa-solid font-rocket fa-rocket"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base sm:text-lg bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-purple-300 to-pink-400">
+                        Space Rescue Mission
+                    </h1>
+                    <p class="text-xs text-purple-300/80 hidden sm:block">ภารกิจกู้ภัยอวกาศ: แนวคิดเชิงคำนวณ ม.1</p>
+                </div>
+            </div>
+
+            <!-- Energy Bar & Controls -->
+            <div class="flex items-center space-x-3 sm:space-x-4 ml-auto">
+                <!-- Energy Bar -->
+                <div class="bg-slate-950/80 border border-slate-700/80 rounded-full p-1 sm:p-1.5 px-3 flex items-center space-x-2">
+                    <i class="fa-solid fa-bolt text-yellow-400 text-sm sm:text-base animate-pulse"></i>
+                    <div class="w-20 sm:w-32 bg-slate-800 rounded-full h-3 overflow-hidden border border-slate-700">
+                        <div id="energyBar" class="bg-gradient-to-r from-amber-500 via-emerald-400 to-cyan-400 h-full w-0 transition-all duration-700 rounded-full"></div>
+                    </div>
+                    <span id="energyText" class="text-xs font-bold text-emerald-400 min-w-[36px]">0%</span>
+                </div>
+
+                <!-- Mute Sound Toggle Button -->
+                <button id="soundBtn" onclick="toggleSound()" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 flex items-center justify-center transition active:scale-95" title="เปิด/ปิด เสียง">
+                    <i id="soundIcon" class="fa-solid fa-volume-high text-cyan-400"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- LEVEL PROGRESS BAR -->
+        <div id="levelTracker" class="hidden mb-4 bg-slate-900/60 backdrop-blur-md rounded-xl p-2.5 border border-slate-800 flex justify-between items-center text-xs">
+            <div class="grid grid-cols-5 gap-1.5 w-full text-center font-medium">
+                <div id="badge-lvl-1" class="py-1.5 px-1 rounded-lg bg-slate-800 text-slate-400 border border-slate-700 flex flex-col sm:flex-row items-center justify-center gap-1 transition-all">
+                    <span class="w-5 h-5 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center text-[10px] font-bold">1</span>
+                    <span class="truncate">Decomposition</span>
+                </div>
+                <div id="badge-lvl-2" class="py-1.5 px-1 rounded-lg bg-slate-800 text-slate-400 border border-slate-700 flex flex-col sm:flex-row items-center justify-center gap-1 transition-all">
+                    <span class="w-5 h-5 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center text-[10px] font-bold">2</span>
+                    <span class="truncate">Abstraction</span>
+                </div>
+                <div id="badge-lvl-3" class="py-1.5 px-1 rounded-lg bg-slate-800 text-slate-400 border border-slate-700 flex flex-col sm:flex-row items-center justify-center gap-1 transition-all">
+                    <span class="w-5 h-5 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center text-[10px] font-bold">3</span>
+                    <span class="truncate">Pattern</span>
+                </div>
+                <div id="badge-lvl-4" class="py-1.5 px-1 rounded-lg bg-slate-800 text-slate-400 border border-slate-700 flex flex-col sm:flex-row items-center justify-center gap-1 transition-all">
+                    <span class="w-5 h-5 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center text-[10px] font-bold">4</span>
+                    <span class="truncate">Algorithm</span>
+                </div>
+                <div id="badge-lvl-5" class="py-1.5 px-1 rounded-lg bg-slate-800 text-slate-400 border border-slate-700 flex flex-col sm:flex-row items-center justify-center gap-1 transition-all">
+                    <span class="w-5 h-5 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center text-[10px] font-bold">5</span>
+                    <span class="truncate">Debugging</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN CONTAINER FOR SCREENS -->
+        <main class="flex-1 flex flex-col justify-center my-auto">
+
+            <!-- SCREEN 0: WELCOME & INTRO -->
+            <section id="screenWelcome" class="bg-slate-900/80 backdrop-blur-xl border border-purple-500/40 rounded-3xl p-6 sm:p-10 text-center shadow-2xl glow-box-purple max-w-2xl mx-auto w-full transition-all duration-500">
+                <div class="relative inline-block mb-6">
+                    <div class="w-28 h-28 sm:w-36 sm:h-36 mx-auto rounded-full bg-gradient-to-tr from-purple-600 via-indigo-600 to-cyan-400 flex items-center justify-center text-6xl sm:text-7xl text-white shadow-xl animate-float">
+                        <i class="fa-solid fa-user-astronaut"></i>
+                    </div>
+                    <span class="absolute bottom-1 right-1 bg-amber-400 text-slate-950 font-black text-xs px-2.5 py-1 rounded-full uppercase tracking-wider border-2 border-slate-900 shadow">
+                        ม.1
+                    </span>
+                </div>
+
+                <h2 class="text-2xl sm:text-4xl font-extrabold text-white mb-3">
+                    ภารกิจกู้ภัยอวกาศ!
+                </h2>
+                <p class="text-slate-300 text-sm sm:text-base leading-relaxed mb-6 max-w-lg mx-auto">
+                    ยานกู้ภัยได้รับสัญญาณเตือนฉุกเฉินจากกาแล็กซีอันไกลโพ้น! ใช้พลัง <span class="text-cyan-400 font-semibold">แนวคิดเชิงคำนวณ 4 ด้าน</span> และ <span class="text-pink-400 font-semibold">Debugging</span> เพื่อพิชิต 5 ด่านและกู้คืนพลังงานยานอวกาศ!
+                </p>
+
+                <!-- CT Concept Badges Preview -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-8 text-xs text-slate-300">
+                    <div class="p-2 bg-slate-800/80 rounded-xl border border-purple-500/30">
+                        <i class="fa-solid fa-puzzle-piece text-purple-400 mb-1 text-base block"></i>
+                        1. แบ่งย่อยปัญหา
+                    </div>
+                    <div class="p-2 bg-slate-800/80 rounded-xl border border-cyan-500/30">
+                        <i class="fa-solid fa-filter text-cyan-400 mb-1 text-base block"></i>
+                        2. คิดเชิงนามธรรม
+                    </div>
+                    <div class="p-2 bg-slate-800/80 rounded-xl border border-amber-500/30">
+                        <i class="fa-solid fa-shapes text-amber-400 mb-1 text-base block"></i>
+                        3. หารูปแบบ
+                    </div>
+                    <div class="p-2 bg-slate-800/80 rounded-xl border border-emerald-500/30">
+                        <i class="fa-solid fa-list-ol text-emerald-400 mb-1 text-base block"></i>
+                        4. ออกแบบขั้นตอน
+                    </div>
+                </div>
+
+                <button onclick="startGame()" class="w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-cyan-500 via-purple-600 to-pink-500 hover:from-cyan-400 hover:via-purple-500 hover:to-pink-400 text-white font-bold text-lg rounded-2xl shadow-lg transition transform hover:scale-105 active:scale-95 flex items-center justify-center space-x-3 mx-auto glow-box-cyan">
+                    <span>เริ่มต้นภารกิจ</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </section>
+
+            <!-- SCREEN 1: LEVEL 1 - DECOMPOSITION -->
+            <section id="screenLvl1" class="hidden bg-slate-900/80 backdrop-blur-xl border border-purple-500/40 rounded-3xl p-5 sm:p-8 shadow-2xl glow-box-purple w-full transition-all">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+                    <div>
+                        <span class="text-xs font-bold text-purple-400 uppercase tracking-widest bg-purple-950/80 px-3 py-1 rounded-full border border-purple-800">
+                            ด่านที่ 1 : Decomposition (การแบ่งย่อยปัญหา)
+                        </span>
+                        <h2 class="text-xl sm:text-2xl font-bold text-white mt-1">ซ่อมแซมยานอวกาศ</h2>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs text-slate-400">ชิ้นส่วนที่ซ่อมสำเร็จ:</span>
+                        <div id="lvl1Counter" class="text-lg font-black text-cyan-400">0 / 3</div>
+                    </div>
+                </div>
+
+                <p class="text-sm text-slate-300 mb-6 bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
+                    💡 <strong class="text-cyan-300">หลักการ:</strong> ยานอวกาศขัดข้องครั้งใหญ่! หากมองเป็นปัญหาใหญ่ปัญหาเดียวจะแก้ได้ยาก เราต้อง <span class="text-amber-300">"แบ่งย่อยปัญหา"</span> ออกเป็น 3 จุด (เครื่องยนต์, ระบบสื่อสาร, ปีกยาน) แล้วคลิกซ่อมทีละจุด!
+                </p>
+
+                <!-- Spaceship Interactive Repair Canvas/SVG Display -->
+                <div class="relative bg-slate-950/90 rounded-2xl p-4 sm:p-8 border border-slate-800 flex flex-col items-center justify-center min-h-[320px] overflow-hidden">
+                    
+                    <!-- Spaceship Graphic SVG -->
+                    <div class="relative w-full max-w-md my-4">
+                        <svg viewBox="0 0 400 220" class="w-full h-auto drop-shadow-2xl">
+                            <!-- Main Hull -->
+                            <path d="M 100 110 Q 200 40 330 110 Q 200 180 100 110 Z" fill="#1e293b" stroke="#475569" stroke-width="4"/>
+                            <path d="M 140 110 Q 220 60 310 110 Q 220 160 140 110 Z" fill="#334155"/>
+                            <!-- Cockpit Glass -->
+                            <ellipse cx="270" cy="110" rx="30" ry="18" fill="#06b6d4" opacity="0.8"/>
+                            
+                            <!-- Wings -->
+                            <path d="M 150 70 L 100 20 L 180 60 Z" fill="#475569" stroke="#64748b" stroke-width="2"/>
+                            <path d="M 150 150 L 100 200 L 180 160 Z" fill="#475569" stroke="#64748b" stroke-width="2"/>
+                            
+                            <!-- Engines -->
+                            <rect x="60" y="90" width="40" height="40" rx="6" fill="#64748b" stroke="#94a3b8" stroke-width="2"/>
+                        </svg>
+
+                        <!-- REPAIR TARGET 1: Engine (Left) -->
+                        <button id="repair-btn-engine" onclick="repairComponent('engine')" class="absolute top-[40%] left-[8%] transform -translate-y-1/2 p-3 sm:p-4 rounded-2xl bg-red-500/20 hover:bg-red-500/40 border-2 border-red-500 text-red-400 font-bold flex items-center space-x-2 transition transform hover:scale-110 active:scale-95 animate-fire">
+                            <i class="fa-solid fa-fire text-xl text-amber-400"></i>
+                            <span class="text-xs sm:text-sm text-white font-bold">1. เครื่องยนต์</span>
+                        </button>
+
+                        <!-- REPAIR TARGET 2: Wing (Bottom) -->
+                        <button id="repair-btn-wing" onclick="repairComponent('wing')" class="absolute bottom-[2%] left-[22%] p-3 sm:p-4 rounded-2xl bg-red-500/20 hover:bg-red-500/40 border-2 border-red-500 text-red-400 font-bold flex items-center space-x-2 transition transform hover:scale-110 active:scale-95 animate-fire">
+                            <i class="fa-solid fa-triangle-exclamation text-xl text-amber-400"></i>
+                            <span class="text-xs sm:text-sm text-white font-bold">2. ปีกยาน</span>
+                        </button>
+
+                        <!-- REPAIR TARGET 3: Comms Antenna (Top Right) -->
+                        <button id="repair-btn-comms" onclick="repairComponent('comms')" class="absolute top-[5%] right-[18%] p-3 sm:p-4 rounded-2xl bg-red-500/20 hover:bg-red-500/40 border-2 border-red-500 text-red-400 font-bold flex items-center space-x-2 transition transform hover:scale-110 active:scale-95 animate-fire">
+                            <i class="fa-solid fa-tower-broadcast text-xl text-amber-400"></i>
+                            <span class="text-xs sm:text-sm text-white font-bold">3. ระบบสื่อสาร</span>
+                        </button>
+                    </div>
+
+                    <div id="lvl1Status" class="mt-2 text-xs sm:text-sm font-semibold text-purple-300 text-center">
+                        👆 กดคลิกที่จุดที่ขัดข้อง (มีไฟกะพริบ) ทั้ง 3 จุดเพื่อแก้ไขปัญหาย่อยทีละส่วน
+                    </div>
+                </div>
+            </section>
+
+            <!-- SCREEN 2: LEVEL 2 - ABSTRACTION -->
+            <section id="screenLvl2" class="hidden bg-slate-900/80 backdrop-blur-xl border border-cyan-500/40 rounded-3xl p-5 sm:p-8 shadow-2xl glow-box-cyan w-full transition-all">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+                    <div>
+                        <span class="text-xs font-bold text-cyan-400 uppercase tracking-widest bg-cyan-950/80 px-3 py-1 rounded-full border border-cyan-800">
+                            ด่านที่ 2 : Abstraction (การคิดเชิงนามธรรม)
+                        </span>
+                        <h2 class="text-xl sm:text-2xl font-bold text-white mt-1">ค้นหาสัญญาณ SOS</h2>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs text-slate-400">เลือกสัญญาณสำคัญ:</span>
+                        <div id="lvl2Counter" class="text-lg font-black text-cyan-400">0 / 2</div>
+                    </div>
+                </div>
+
+                <p class="text-sm text-slate-300 mb-5 bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
+                    💡 <strong class="text-cyan-300">หลักการ:</strong> สัญญาณวิทยุถูกรบกวนด้วยขยะข้อมูล! การคิดเชิงนามธรรมคือ <span class="text-amber-300">"การคัดเลือกเฉพาะข้อมูลที่จำเป็น ละทิ้งรายละเอียดที่ไม่สำคัญ"</span> เลือกเฉพาะ 2 สัญญาณที่สำคัญต่อการกู้ภัย!
+                </p>
+
+                <!-- Signal Scanner Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mb-4">
+                    <!-- Signal 1: Important (Star Coordinates) -->
+                    <div id="sig-coords" onclick="selectSignal('coords', true)" class="signal-card bg-slate-950/80 hover:bg-slate-800/80 border-2 border-slate-700 hover:border-cyan-400 rounded-2xl p-4 cursor-pointer transition transform hover:-translate-y-1 active:scale-95 flex flex-col justify-between">
+                        <div class="flex items-center justify-between mb-2">
+                            <i class="fa-solid fa-map-location-dot text-2xl text-cyan-400"></i>
+                            <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">FREQ #101</span>
+                        </div>
+                        <h3 class="font-bold text-white text-sm mb-1">พิกัดดาวช่วยเหลือ</h3>
+                        <p class="text-xs text-slate-400">Sector 7G: Lat 14.52, Long 99.12</p>
+                    </div>
+
+                    <!-- Signal 2: Noise (Alien Song) -->
+                    <div id="sig-song" onclick="selectSignal('song', false)" class="signal-card bg-slate-950/80 hover:bg-slate-800/80 border-2 border-slate-700 hover:border-pink-500 rounded-2xl p-4 cursor-pointer transition transform hover:-translate-y-1 active:scale-95 flex flex-col justify-between">
+                        <div class="flex items-center justify-between mb-2">
+                            <i class="fa-solid fa-music text-2xl text-pink-400"></i>
+                            <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">FREQ #204</span>
+                        </div>
+                        <h3 class="font-bold text-white text-sm mb-1">เพลงเอเลี่ยนฮิตป็อป</h3>
+                        <p class="text-xs text-slate-400">บทเพลงจากดวงดาวต่างกาแล็กซี</p>
+                    </div>
+
+                    <!-- Signal 3: Important (SOS Code) -->
+                    <div id="sig-sos" onclick="selectSignal('sos', true)" class="signal-card bg-slate-950/80 hover:bg-slate-800/80 border-2 border-slate-700 hover:border-cyan-400 rounded-2xl p-4 cursor-pointer transition transform hover:-translate-y-1 active:scale-95 flex flex-col justify-between">
+                        <div class="flex items-center justify-between mb-2">
+                            <i class="fa-solid fa-triangle-exclamation text-2xl text-amber-400"></i>
+                            <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">FREQ #911</span>
+                        </div>
+                        <h3 class="font-bold text-white text-sm mb-1">โค้ดรหัส SOS ฉุกเฉิน</h3>
+                        <p class="text-xs text-slate-400">... --- ... (ขอความช่วยเหลือด่วน)</p>
+                    </div>
+
+                    <!-- Signal 4: Noise (Space Ad) -->
+                    <div id="sig-ad" onclick="selectSignal('ad', false)" class="signal-card bg-slate-950/80 hover:bg-slate-800/80 border-2 border-slate-700 hover:border-purple-500 rounded-2xl p-4 cursor-pointer transition transform hover:-translate-y-1 active:scale-95 flex flex-col justify-between">
+                        <div class="flex items-center justify-between mb-2">
+                            <i class="fa-solid fa-pizza-slice text-2xl text-yellow-400"></i>
+                            <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">FREQ #305</span>
+                        </div>
+                        <h3 class="font-bold text-white text-sm mb-1">โฆษณาพิซซ่าอวกาศ</h3>
+                        <p class="text-xs text-slate-400">ลดราคาพิเศษ 50% วันนี้เท่านั้น</p>
+                    </div>
+
+                    <!-- Signal 5: Noise (Cosmic Dust Report) -->
+                    <div id="sig-weather" onclick="selectSignal('weather', false)" class="signal-card bg-slate-950/80 hover:bg-slate-800/80 border-2 border-slate-700 hover:border-indigo-500 rounded-2xl p-4 cursor-pointer transition transform hover:-translate-y-1 active:scale-95 flex flex-col justify-between">
+                        <div class="flex items-center justify-between mb-2">
+                            <i class="fa-solid fa-cloud-sun text-2xl text-indigo-400"></i>
+                            <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">FREQ #410</span>
+                        </div>
+                        <h3 class="font-bold text-white text-sm mb-1">รายงานฝุ่นอวกาศทั่วไป</h3>
+                        <p class="text-xs text-slate-400">สภาพอากาศอวกาศสดใส ไร้มรสุม</p>
+                    </div>
+
+                    <!-- Signal 6: Noise (Space News) -->
+                    <div id="sig-news" onclick="selectSignal('news', false)" class="signal-card bg-slate-950/80 hover:bg-slate-800/80 border-2 border-slate-700 hover:border-teal-500 rounded-2xl p-4 cursor-pointer transition transform hover:-translate-y-1 active:scale-95 flex flex-col justify-between">
+                        <div class="flex items-center justify-between mb-2">
+                            <i class="fa-solid fa-newspaper text-2xl text-teal-400"></i>
+                            <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">FREQ #502</span>
+                        </div>
+                        <h3 class="font-bold text-white text-sm mb-1">ข่าวการแข่งยานความเร็ว</h3>
+                        <p class="text-xs text-slate-400">การแข่งขันรอบชิงชนะเลิศคืนนี้</p>
+                    </div>
+                </div>
+
+                <div id="lvl2Message" class="text-center text-xs sm:text-sm font-semibold text-slate-400 min-h-[24px]">
+                    คลิกเลือกการ์ดสัญญาณที่เป็นข้อมูลจำเป็นในการกู้ภัยเท่านั้น
+                </div>
+            </section>
+
+            <!-- SCREEN 3: LEVEL 3 - PATTERN RECOGNITION -->
+            <section id="screenLvl3" class="hidden bg-slate-900/80 backdrop-blur-xl border border-amber-500/40 rounded-3xl p-5 sm:p-8 shadow-2xl glow-box-purple w-full transition-all">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+                    <div>
+                        <span class="text-xs font-bold text-amber-400 uppercase tracking-widest bg-amber-950/80 px-3 py-1 rounded-full border border-amber-800">
+                            ด่านที่ 3 : Pattern Recognition (การหารูปแบบ)
+                        </span>
+                        <h2 class="text-xl sm:text-2xl font-bold text-white mt-1">จัดกลุ่มเอเลี่ยนอพยพ</h2>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs text-slate-400">พาเอเลี่ยนขึ้นยาน:</span>
+                        <div id="lvl3Counter" class="text-lg font-black text-amber-400">0 / 2</div>
+                    </div>
+                </div>
+
+                <p class="text-sm text-slate-300 mb-5 bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
+                    💡 <strong class="text-cyan-300">หลักการ:</strong> ยานกู้ภัยหมายเลข 1 ถูกตั้งโปรแกรมให้รับเฉพาะกลุ่มที่มีลักษณะไร้ข้อผิดพลาด! ให้สังเกต <span class="text-amber-300">"รูปแบบร่วม"</span> แล้วคลิกเลือก <strong class="text-emerald-400">เอเลี่ยนที่มี "ตาเดียว (1 Eye)" ทั้ง 2 ตัว</strong> เพื่อขึ้นยาน!
+                </p>
+
+                <!-- Aliens Grid Interactive Cards -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                    
+                    <!-- Alien 1: 1 Eye (Green) -->
+                    <div id="alien-1" onclick="selectAlien(1, 1)" class="alien-card bg-slate-950 border-2 border-slate-700 hover:border-emerald-400 rounded-2xl p-4 text-center cursor-pointer transition transform hover:-translate-y-1.5 active:scale-95 flex flex-col items-center">
+                        <svg class="w-20 h-20 mb-2" viewBox="0 0 100 100">
+                            <circle cx="50" cy="55" r="35" fill="#10b981"/>
+                            <!-- Single Eye -->
+                            <circle cx="50" cy="50" r="14" fill="#ffffff"/>
+                            <circle cx="50" cy="50" r="6" fill="#0f172a"/>
+                            <!-- Antenna -->
+                            <line x1="50" y1="20" x2="50" y2="5" stroke="#10b981" stroke-width="4"/>
+                            <circle cx="50" cy="5" r="5" fill="#34d399"/>
+                            <!-- Smile -->
+                            <path d="M 40 70 Q 50 80 60 70" stroke="#047857" stroke-width="3" fill="none"/>
+                        </svg>
+                        <span class="font-bold text-white text-sm">บ๊อบ (Bob)</span>
+                        <span class="text-[11px] text-emerald-400 font-semibold mt-1">มีตา 1 ดวง</span>
+                    </div>
+
+                    <!-- Alien 2: 3 Eyes (Purple) -->
+                    <div id="alien-2" onclick="selectAlien(2, 3)" class="alien-card bg-slate-950 border-2 border-slate-700 hover:border-purple-400 rounded-2xl p-4 text-center cursor-pointer transition transform hover:-translate-y-1.5 active:scale-95 flex flex-col items-center">
+                        <svg class="w-20 h-20 mb-2" viewBox="0 0 100 100">
+                            <path d="M 20 75 Q 50 25 80 75 Z" fill="#a855f7"/>
+                            <!-- 3 Eyes -->
+                            <circle cx="35" cy="55" r="8" fill="#ffffff"/>
+                            <circle cx="35" cy="55" r="3" fill="#0f172a"/>
+                            
+                            <circle cx="50" cy="45" r="8" fill="#ffffff"/>
+                            <circle cx="50" cy="45" r="3" fill="#0f172a"/>
+
+                            <circle cx="65" cy="55" r="8" fill="#ffffff"/>
+                            <circle cx="65" cy="55" r="3" fill="#0f172a"/>
+                            <!-- Smile -->
+                            <path d="M 42 68 Q 50 75 58 68" stroke="#6b21a8" stroke-width="3" fill="none"/>
+                        </svg>
+                        <span class="font-bold text-white text-sm">โกลดี้ (Goldy)</span>
+                        <span class="text-[11px] text-purple-400 font-semibold mt-1">มีตา 3 ดวง</span>
+                    </div>
+
+                    <!-- Alien 3: 1 Eye (Cyan) -->
+                    <div id="alien-3" onclick="selectAlien(3, 1)" class="alien-card bg-slate-950 border-2 border-slate-700 hover:border-emerald-400 rounded-2xl p-4 text-center cursor-pointer transition transform hover:-translate-y-1.5 active:scale-95 flex flex-col items-center">
+                        <svg class="w-20 h-20 mb-2" viewBox="0 0 100 100">
+                            <rect x="20" y="25" width="60" height="55" rx="15" fill="#06b6d4"/>
+                            <!-- Single Eye -->
+                            <circle cx="50" cy="48" r="15" fill="#ffffff"/>
+                            <circle cx="50" cy="48" r="7" fill="#0284c7"/>
+                            <!-- Antennas -->
+                            <line x1="35" y1="25" x2="25" y2="10" stroke="#06b6d4" stroke-width="4"/>
+                            <circle cx="25" cy="10" r="4" fill="#67e8f9"/>
+                            <line x1="65" y1="25" x2="75" y2="10" stroke="#06b6d4" stroke-width="4"/>
+                            <circle cx="75" cy="10" r="4" fill="#67e8f9"/>
+                        </svg>
+                        <span class="font-bold text-white text-sm">ซีโร่ (Xero)</span>
+                        <span class="text-[11px] text-emerald-400 font-semibold mt-1">มีตา 1 ดวง</span>
+                    </div>
+
+                    <!-- Alien 4: 3 Eyes (Pink) -->
+                    <div id="alien-4" onclick="selectAlien(4, 3)" class="alien-card bg-slate-950 border-2 border-slate-700 hover:border-pink-400 rounded-2xl p-4 text-center cursor-pointer transition transform hover:-translate-y-1.5 active:scale-95 flex flex-col items-center">
+                        <svg class="w-20 h-20 mb-2" viewBox="0 0 100 100">
+                            <ellipse cx="50" cy="55" rx="35" ry="28" fill="#ec4899"/>
+                            <!-- 3 Eyes -->
+                            <circle cx="33" cy="50" r="7" fill="#ffffff"/>
+                            <circle cx="33" cy="50" r="3" fill="#0f172a"/>
+
+                            <circle cx="50" cy="42" r="7" fill="#ffffff"/>
+                            <circle cx="50" cy="42" r="3" fill="#0f172a"/>
+
+                            <circle cx="67" cy="50" r="7" fill="#ffffff"/>
+                            <circle cx="67" cy="50" r="3" fill="#0f172a"/>
+                        </svg>
+                        <span class="font-bold text-white text-sm">ปิงปอง (Ping)</span>
+                        <span class="text-[11px] text-pink-400 font-semibold mt-1">มีตา 3 ดวง</span>
+                    </div>
+
+                </div>
+
+                <div id="lvl3Message" class="text-center text-xs sm:text-sm font-semibold text-slate-300">
+                    เลือกเอเลี่ยนที่มี <strong class="text-emerald-400">ตาเดียว</strong> ทั้งหมดเพื่อผ่านด่าน
+                </div>
+            </section>
+
+            <!-- SCREEN 4: LEVEL 4 - ALGORITHM DESIGN -->
+            <section id="screenLvl4" class="hidden bg-slate-900/80 backdrop-blur-xl border border-emerald-500/40 rounded-3xl p-5 sm:p-8 shadow-2xl glow-box-emerald w-full transition-all">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+                    <div>
+                        <span class="text-xs font-bold text-emerald-400 uppercase tracking-widest bg-emerald-950/80 px-3 py-1 rounded-full border border-emerald-800">
+                            ด่านที่ 4 : Algorithm Design (การออกแบบขั้นตอน)
+                        </span>
+                        <h2 class="text-xl sm:text-2xl font-bold text-white mt-1">ลงจอดฉุกเฉิน</h2>
+                    </div>
+                </div>
+
+                <p class="text-sm text-slate-300 mb-5 bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
+                    💡 <strong class="text-cyan-300">หลักการ:</strong> การลงจอดต้องทำตาม <span class="text-amber-300">"ขั้นตอนอัลกอริทึม"</span> ที่ถูกต้องทีละลำดับ! คลิกเลือกขั้นตอนทางด้านล่างเรียงตามลำดับที่ถูกต้อง 1 ถึง 4
+                </p>
+
+                <!-- Sequence Slots (Target Drop Zones) -->
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-2.5 mb-6">
+                    <div id="slot-1" class="bg-slate-950/80 border-2 border-dashed border-emerald-500/50 rounded-2xl p-3 min-h-[70px] flex flex-col justify-center items-center text-center relative">
+                        <span class="absolute top-1 left-2 text-[10px] text-emerald-400 font-bold">ขั้นตอนที่ 1</span>
+                        <span class="slot-text text-xs text-slate-500">ว่างเปล่า</span>
+                    </div>
+                    <div id="slot-2" class="bg-slate-950/80 border-2 border-dashed border-emerald-500/50 rounded-2xl p-3 min-h-[70px] flex flex-col justify-center items-center text-center relative">
+                        <span class="absolute top-1 left-2 text-[10px] text-emerald-400 font-bold">ขั้นตอนที่ 2</span>
+                        <span class="slot-text text-xs text-slate-500">ว่างเปล่า</span>
+                    </div>
+                    <div id="slot-3" class="bg-slate-950/80 border-2 border-dashed border-emerald-500/50 rounded-2xl p-3 min-h-[70px] flex flex-col justify-center items-center text-center relative">
+                        <span class="absolute top-1 left-2 text-[10px] text-emerald-400 font-bold">ขั้นตอนที่ 3</span>
+                        <span class="slot-text text-xs text-slate-500">ว่างเปล่า</span>
+                    </div>
+                    <div id="slot-4" class="bg-slate-950/80 border-2 border-dashed border-emerald-500/50 rounded-2xl p-3 min-h-[70px] flex flex-col justify-center items-center text-center relative">
+                        <span class="absolute top-1 left-2 text-[10px] text-emerald-400 font-bold">ขั้นตอนที่ 4</span>
+                        <span class="slot-text text-xs text-slate-500">ว่างเปล่า</span>
+                    </div>
+                </div>
+
+                <!-- Available Step Options (Clickable Pool) -->
+                <div id="stepPool" class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                    <!-- Step Options loaded dynamically via JS -->
+                </div>
+
+                <div class="flex justify-between items-center">
+                    <button onclick="resetLvl4()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl border border-slate-600 transition">
+                        <i class="fa-solid fa-rotate-left mr-1"></i> เริ่มเรียงใหม่
+                    </button>
+                    <button id="lvl4Submit" onclick="checkLvl4()" disabled class="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-40 text-white font-bold text-sm rounded-xl transition shadow">
+                        ตรวจสอบลำดับขั้นตอน
+                    </button>
+                </div>
+            </section>
+
+            <!-- SCREEN 5: LEVEL 5 - DEBUGGING -->
+            <section id="screenLvl5" class="hidden bg-slate-900/80 backdrop-blur-xl border border-pink-500/40 rounded-3xl p-5 sm:p-8 shadow-2xl glow-box-purple w-full transition-all">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+                    <div>
+                        <span class="text-xs font-bold text-pink-400 uppercase tracking-widest bg-pink-950/80 px-3 py-1 rounded-full border border-pink-800">
+                            ด่านที่ 5 : Debugging (การแก้ไขจุดบกพร่อง)
+                        </span>
+                        <h2 class="text-xl sm:text-2xl font-bold text-white mt-1">ปลดล็อกประตูช่วยชีวิต</h2>
+                    </div>
+                </div>
+
+                <p class="text-sm text-slate-300 mb-5 bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
+                    🚨 <strong class="text-pink-400">พบจุดบกพร่อง (Bug)!</strong> ระบบเปิดประตูติดขัดเนื่องจากโค้ดสลับลำดับ การ <span class="text-amber-300">"Debugging"</span> คือการหาและแก้ไขข้อผิดพลาด เลือกคำตอบที่เรียงลำดับโค้ดล็อกประตูได้ถูกต้องเพื่อช่วยผู้รอดชีวิต!
+                </p>
+
+                <!-- Current Buggy Code Display -->
+                <div class="bg-slate-950/90 border border-red-500/40 rounded-2xl p-4 mb-6 relative overflow-hidden font-mono text-xs sm:text-sm">
+                    <div class="text-red-400 font-bold mb-2 flex items-center space-x-2">
+                        <i class="fa-solid fa-bug text-lg animate-bounce"></i>
+                        <span>โค้ดที่มีข้อผิดพลาด (Bug Detected):</span>
+                    </div>
+                    <ol class="list-decimal list-inside space-y-1 text-slate-300 bg-slate-900 p-3 rounded-xl border border-slate-800">
+                        <li class="line-through text-slate-500">1. ใส่รหัสผ่านความปลอดภัย (Input Security Code)</li>
+                        <li class="line-through text-slate-500">2. เปิดประตูสุญญากาศ (Open Airlock Door)</li>
+                        <li class="text-amber-400 font-bold">3. ตรวจสอบลายนิ้วมือ (Scan Fingerprint)  <span class="text-xs text-red-400">← ผิดลำดับ! (ต้องตรวจก่อนใส่รหัส)</span></li>
+                    </ol>
+                </div>
+
+                <!-- Quiz Options -->
+                <div class="space-y-3 mb-6">
+                    <!-- Option A (Wrong) -->
+                    <button onclick="checkLvl5(false, this)" class="debug-option w-full p-4 bg-slate-950 hover:bg-slate-800 border-2 border-slate-700 hover:border-slate-500 rounded-2xl text-left transition flex items-center justify-between group">
+                        <span class="text-xs sm:text-sm text-slate-200">
+                            A. 1. เปิดประตู ➔ 2. ตรวจสอบลายนิ้วมือ ➔ 3. ใส่รหัสผ่าน
+                        </span>
+                        <i class="fa-regular fa-circle text-slate-500 group-hover:text-cyan-400"></i>
+                    </button>
+
+                    <!-- Option B (Correct) -->
+                    <button onclick="checkLvl5(true, this)" class="debug-option w-full p-4 bg-slate-950 hover:bg-slate-800 border-2 border-slate-700 hover:border-emerald-500 rounded-2xl text-left transition flex items-center justify-between group">
+                        <span class="text-xs sm:text-sm text-slate-200">
+                            B. 1. ตรวจสอบลายนิ้วมือ ➔ 2. ใส่รหัสผ่าน ➔ 3. เปิดประตูประตูสุญญากาศ
+                        </span>
+                        <i class="fa-regular fa-circle text-slate-500 group-hover:text-emerald-400"></i>
+                    </button>
+
+                    <!-- Option C (Wrong) -->
+                    <button onclick="checkLvl5(false, this)" class="debug-option w-full p-4 bg-slate-950 hover:bg-slate-800 border-2 border-slate-700 hover:border-slate-500 rounded-2xl text-left transition flex items-center justify-between group">
+                        <span class="text-xs sm:text-sm text-slate-200">
+                            C. 1. ใส่รหัสผ่าน ➔ 2. เปิดประตูประตูสุญญากาศ ➔ 3. ตรวจสอบลายนิ้วมือ
+                        </span>
+                        <i class="fa-regular fa-circle text-slate-500 group-hover:text-cyan-400"></i>
+                    </button>
+                </div>
+
+                <div id="lvl5Feedback" class="text-center text-xs sm:text-sm font-semibold min-h-[24px]"></div>
+            </section>
+
+            <!-- SCREEN 6: VICTORY & SUMMARY -->
+            <section id="screenVictory" class="hidden bg-slate-900/90 backdrop-blur-xl border border-amber-500/50 rounded-3xl p-6 sm:p-10 text-center shadow-2xl glow-box-purple max-w-2xl mx-auto w-full transition-all">
+                <div class="inline-block p-4 rounded-full bg-amber-500/20 border-2 border-amber-400 mb-4 animate-bounce">
+                    <i class="fa-solid fa-trophy text-5xl text-amber-400"></i>
+                </div>
+
+                <h2 class="text-2xl sm:text-4xl font-extrabold text-white mb-2">
+                    ภารกิจสำเร็จลุล่วง!
+                </h2>
+                <p class="text-emerald-400 font-bold text-sm sm:text-base mb-6">
+                    🎉 คุณได้กู้คืนพลังงานยานอวกาศครบ 100% และช่วยเหลือทุกคนปลอดภัย!
+                </p>
+
+                <!-- CT Certificate Summary Card -->
+                <div class="bg-slate-950/80 border border-slate-700 rounded-2xl p-5 mb-6 text-left space-y-3">
+                    <h3 class="font-bold text-cyan-400 text-sm border-b border-slate-800 pb-2 flex items-center justify-between">
+                        <span>สรุปความรู้: แนวคิดเชิงคำนวณ (Computational Thinking)</span>
+                        <i class="fa-solid fa-graduation-cap text-lg"></i>
+                    </h3>
+                    <ul class="text-xs text-slate-300 space-y-2 leading-relaxed">
+                        <li><strong class="text-purple-400">1. Decomposition:</strong> การแตกปัญหาใหญ่ออกเป็นปัญหาย่อยๆ เพื่อซ่อมแซมได้ตรงจุด</li>
+                        <li><strong class="text-cyan-400">2. Abstraction:</strong> การเลือกเฉพาะสาระสำคัญ ละทิ้งรายละเอียดที่ไม่เกี่ยวข้อง</li>
+                        <li><strong class="text-amber-400">3. Pattern Recognition:</strong> การสังเกตรูปแบบและลักษณะร่วมเพื่อจัดหมวดหมู่</li>
+                        <li><strong class="text-emerald-400">4. Algorithm Design:</strong> การออกแบบลำดับขั้นตอนการทำงานอย่างชัดเจน</li>
+                        <li><strong class="text-pink-400">5. Debugging:</strong> การค้นหาและแก้ไขข้อผิดพลาดของโปรแกรม</li>
+                    </ul>
+                </div>
+
+                <button onclick="resetEntireGame()" class="px-8 py-3.5 bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 hover:from-purple-500 hover:to-amber-400 text-white font-bold text-base rounded-2xl shadow-lg transition transform hover:scale-105 active:scale-95 flex items-center justify-center space-x-2 mx-auto">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>เล่นใหม่อีกครั้ง</span>
+                </button>
+            </section>
+
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="mt-6 text-center text-[11px] text-slate-500 border-t border-slate-900 pt-3">
+            สื่อการเรียนรู้วิทยาการคำนวณ ม.1 • ภารกิจกู้ภัยอวกาศ (Space Rescue Mission)
+        </footer>
+    </div>
+
+    <!-- EDUCATIONAL KNOWLEDGE MODAL POPUP (Shows after each level) -->
+    <div id="ctModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="bg-slate-900 border-2 border-purple-500/60 rounded-3xl p-6 max-w-md w-full shadow-2xl glow-box-purple transform scale-95 transition-transform duration-300 flex flex-col items-center text-center">
+            
+            <div id="modalIconContainer" class="w-16 h-16 rounded-2xl bg-purple-600/30 border border-purple-400 flex items-center justify-center text-3xl text-purple-300 mb-4 animate-bounce">
+                <i id="modalIcon" class="fa-solid fa-star"></i>
+            </div>
+
+            <span id="modalSubhead" class="text-xs font-bold text-purple-400 uppercase tracking-wider mb-1">ผ่านด่านสำเร็จ!</span>
+            <h3 id="modalTitle" class="text-xl font-bold text-white mb-3">สรุปความรู้ CT</h3>
+
+            <div id="modalContent" class="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs sm:text-sm text-slate-300 leading-relaxed mb-6 text-left w-full">
+                <!-- Knowledge text inserted via JS -->
+            </div>
+
+            <button onclick="closeModalAndNext()" class="w-full py-3 bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white font-bold rounded-xl transition shadow transform active:scale-95 flex items-center justify-center space-x-2">
+                <span>ไปด่านถัดไป</span>
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /* Web Audio API Sound Generator for browser-native SFX without external audio files */
+        let audioCtx = null;
+        let soundEnabled = true;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                const now = audioCtx.currentTime;
+
+                if (type === 'click') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(600, now);
+                    osc.frequency.exponentialRampToValueAtTime(300, now + 0.08);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+                } else if (type === 'success') {
+                    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                    notes.forEach((freq, idx) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                        gain.gain.setValueAtTime(0.2, now + idx * 0.08);
+                        gain.gain.linearRampToValueAtTime(0.01, now + idx * 0.08 + 0.2);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + idx * 0.08);
+                        osc.stop(now + idx * 0.08 + 0.2);
+                    });
+                } else if (type === 'error') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(180, now);
+                    osc.frequency.linearRampToValueAtTime(110, now + 0.25);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'win') {
+                    const arpeggio = [440, 554.37, 659.25, 880, 1108.73, 1318.51];
+                    arpeggio.forEach((f, i) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(f, now + i * 0.1);
+                        gain.gain.setValueAtTime(0.25, now + i * 0.1);
+                        gain.gain.linearRampToValueAtTime(0.01, now + i * 0.1 + 0.3);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + i * 0.1);
+                        osc.stop(now + i * 0.1 + 0.3);
+                    });
+                }
+            } catch (e) {
+                console.log("Audio play error:", e);
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const icon = document.getElementById('soundIcon');
+            if (soundEnabled) {
+                icon.className = 'fa-solid fa-volume-high text-cyan-400';
+            } else {
+                icon.className = 'fa-solid fa-volume-xmark text-slate-500';
+            }
+        }
+
+        const canvas = document.getElementById('spaceCanvas');
+        const ctx = canvas.getContext('2d');
+        let stars = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            initStars();
+        }
+
+        function initStars() {
+            stars = [];
+            const count = Math.floor((canvas.width * canvas.height) / 4000);
+            for (let i = 0; i < count; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 1.8,
+                    color: ['#ffffff', '#a855f7', '#38bdf8', '#f472b6'][Math.floor(Math.random() * 4)],
+                    alpha: Math.random(),
+                    speed: 0.005 + Math.random() * 0.015
+                });
+            }
+        }
+
+        function animateStars() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            stars.forEach(star => {
+                star.alpha += star.speed;
+                if (star.alpha > 1 || star.alpha < 0) {
+                    star.speed = -star.speed;
+                }
+                ctx.globalAlpha = Math.abs(star.alpha);
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                ctx.fillStyle = star.color;
+                ctx.fill();
+            });
+            requestAnimationFrame(animateStars);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        animateStars();
+
+        let currentLevel = 0; // 0: welcome, 1-5: levels, 6: victory
+        let energyProgress = 0;
+
+        // Level 1 state
+        let lvl1Repairs = { engine: false, wing: false, comms: false };
+
+        // Level 2 state
+        let lvl2Selected = new Set();
+
+        // Level 3 state
+        let lvl3Selected = new Set();
+
+        // Level 4 state
+        const lvl4CorrectOrder = ['step-wheel', 'step-speed', 'step-touch', 'step-engineoff'];
+        let lvl4CurrentOrder = [];
+
+        const lvl4StepsData = [
+            { id: 'step-wheel', text: '1. กางล้อลงจอด', icon: 'fa-dharmachakra' },
+            { id: 'step-speed', text: '2. ลดความเร็วการบิน', icon: 'fa-gauge-low' },
+            { id: 'step-touch', text: '3. ยานสัมผัสพื้นดาว', icon: 'fa-earth-asia' },
+            { id: 'step-engineoff', text: '4. ดับเครื่องยนต์', icon: 'fa-power-off' }
+        ];
+
+        function updateEnergy(amount) {
+            energyProgress = Math.min(100, Math.max(0, amount));
+            document.getElementById('energyBar').style.width = `${energyProgress}%`;
+            document.getElementById('energyText').innerText = `${energyProgress}%`;
+        }
+
+        function updateLevelBadges() {
+            for (let i = 1; i <= 5; i++) {
+                const badge = document.getElementById(`badge-lvl-${i}`);
+                if (i < currentLevel) {
+                    badge.className = "py-1.5 px-1 rounded-lg bg-emerald-950/80 text-emerald-400 border border-emerald-600 flex flex-col sm:flex-row items-center justify-center gap-1";
+                } else if (i === currentLevel) {
+                    badge.className = "py-1.5 px-1 rounded-lg bg-purple-600 text-white font-bold border border-purple-400 shadow flex flex-col sm:flex-row items-center justify-center gap-1 animate-pulse";
+                } else {
+                    badge.className = "py-1.5 px-1 rounded-lg bg-slate-800 text-slate-500 border border-slate-700 flex flex-col sm:flex-row items-center justify-center gap-1 opacity-60";
+                }
+            }
+        }
+
+        function showScreen(screenId) {
+            const screens = ['screenWelcome', 'screenLvl1', 'screenLvl2', 'screenLvl3', 'screenLvl4', 'screenLvl5', 'screenVictory'];
+            screens.forEach(id => {
+                const el = document.getElementById(id);
+                if (id === screenId) {
+                    el.classList.remove('hidden');
+                } else {
+                    el.classList.add('hidden');
+                }
+            });
+
+            if (currentLevel > 0 && currentLevel <= 5) {
+                document.getElementById('levelTracker').classList.remove('hidden');
+            } else {
+                document.getElementById('levelTracker').classList.add('hidden');
+            }
+            updateLevelBadges();
+        }
+
+        function startGame() {
+            playSound('click');
+            currentLevel = 1;
+            updateEnergy(0);
+            showScreen('screenLvl1');
+        }
+
+        function repairComponent(part) {
+            playSound('click');
+            if (lvl1Repairs[part]) return; // Already repaired
+
+            lvl1Repairs[part] = true;
+            const btn = document.getElementById(`repair-btn-${part}`);
+            btn.className = "absolute p-3 sm:p-4 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500 text-emerald-400 font-bold flex items-center space-x-2 transition opacity-90 cursor-default";
+            btn.innerHTML = `<i class="fa-solid fa-circle-check text-xl text-emerald-400"></i><span class="text-xs sm:text-sm text-white font-bold">ซ่อมสำเร็จ!</span>`;
+
+            const repairedCount = Object.values(lvl1Repairs).filter(Boolean).length;
+            document.getElementById('lvl1Counter').innerText = `${repairedCount} / 3`;
+
+            if (repairedCount === 3) {
+                updateEnergy(20);
+                playSound('success');
+                setTimeout(() => {
+                    openCTModal(
+                        'fa-puzzle-piece',
+                        'Decomposition (การแบ่งย่อยปัญหา)',
+                        'การแบ่งย่อยปัญหา',
+                        '<strong>Decomposition</strong> คือการแตกปัญหาใหญ่และซับซ้อน (เช่น ยานอวกาศเสียทั้งลำ) ให้กลายเป็นปัญหาย่อยๆ ที่จัดการได้ง่ายขึ้นทีละส่วน (ซ่อมเครื่องยนต์ ➔ ปีกยาน ➔ ระบบสื่อสาร) ทำให้การแก้ปัญหาเป็นระบบและไม่สับสน!'
+                    );
+                }, 600);
+            }
+        }
+
+        function selectSignal(sigId, isImportant) {
+            playSound('click');
+            const card = document.getElementById(`sig-${sigId}`);
+            
+            if (lvl2Selected.has(sigId)) {
+                lvl2Selected.delete(sigId);
+                card.classList.remove('border-emerald-400', 'bg-emerald-950/40', 'border-red-500', 'bg-red-950/40');
+                card.classList.add('border-slate-700');
+            } else {
+                if (isImportant) {
+                    lvl2Selected.add(sigId);
+                    card.classList.remove('border-slate-700');
+                    card.classList.add('border-emerald-400', 'bg-emerald-950/40');
+                } else {
+                    playSound('error');
+                    card.classList.add('border-red-500', 'bg-red-950/40');
+                    const msg = document.getElementById('lvl2Message');
+                    msg.innerText = '❌ สัญญาณนี้เป็นขยะข้อมูลที่ไม่จำเป็นต่อการกู้ภัย! ลองคัดเลือกใหม่';
+                    msg.className = 'text-center text-xs sm:text-sm font-semibold text-red-400 animate-pulse';
+                    setTimeout(() => {
+                        card.classList.remove('border-red-500', 'bg-red-950/40');
+                        msg.innerText = 'คลิกเลือกการ์ดสัญญาณที่เป็นข้อมูลจำเป็นในการกู้ภัยเท่านั้น';
+                        msg.className = 'text-center text-xs sm:text-sm font-semibold text-slate-400';
+                    }, 1500);
+                    return;
+                }
+            }
+
+            document.getElementById('lvl2Counter').innerText = `${lvl2Selected.size} / 2`;
+
+            if (lvl2Selected.size === 2) {
+                updateEnergy(40);
+                playSound('success');
+                setTimeout(() => {
+                    openCTModal(
+                        'fa-filter',
+                        'Abstraction (การคิดเชิงนามธรรม)',
+                        'การคิดเชิงนามธรรม',
+                        '<strong>Abstraction</strong> คือการคัดเลือกเฉพาะข้อมูลที่สำคัญและจำเป็นต่อการแก้ปัญหา (เช่น พิกัดดาว และ โค้ด SOS) และตัดรายละเอียดที่ไม่จำเป็นออกไป (เช่น เพลงเอเลี่ยน โฆษณา) ช่วยให้เราโฟกัสกับสิ่งที่สำคัญจริงๆ ได้อย่างรวดเร็ว!'
+                    );
+                }, 600);
+            }
+        }
+
+        function selectAlien(alienNum, eyeCount) {
+            playSound('click');
+            const card = document.getElementById(`alien-${alienNum}`);
+
+            if (eyeCount === 1) {
+                if (lvl3Selected.has(alienNum)) {
+                    lvl3Selected.delete(alienNum);
+                    card.classList.remove('border-emerald-400', 'bg-emerald-950/50');
+                    card.classList.add('border-slate-700');
+                } else {
+                    lvl3Selected.add(alienNum);
+                    card.classList.remove('border-slate-700');
+                    card.classList.add('border-emerald-400', 'bg-emerald-950/50');
+                }
+                
+                document.getElementById('lvl3Counter').innerText = `${lvl3Selected.size} / 2`;
+
+                if (lvl3Selected.size === 2) {
+                    updateEnergy(60);
+                    playSound('success');
+                    setTimeout(() => {
+                        openCTModal(
+                            'fa-shapes',
+                            'Pattern Recognition (การหารูปแบบ)',
+                            'การหารูปแบบ',
+                            '<strong>Pattern Recognition</strong> คือการเปรียบเทียบ สังเกตรูปแบบ สิ่งที่เหมือนกันหรือคล้ายคลึงกันของสิ่งต่างๆ (เช่น สังเกตเห็นว่าบ๊อบและซีโร่ต่างก็มี "ตาเดียว" เหมือนกัน) ช่วยให้เราจำแนกหมวดหมู่และแก้ปัญหาได้อย่างเป็นระบบ!'
+                        );
+                    }, 600);
+                }
+            } else {
+                playSound('error');
+                card.classList.add('border-red-500', 'bg-red-950/40');
+                const msg = document.getElementById('lvl3Message');
+                msg.innerText = '❌ เอเลี่ยนตัวนี้มี 3 ตา ไม่ตรงตามรูปแบบที่ยานต้องการ! สังเกตรูปแบบตาเดียวอีกครั้ง';
+                msg.className = 'text-center text-xs sm:text-sm font-semibold text-red-400 animate-pulse';
+                setTimeout(() => {
+                    card.classList.remove('border-red-500', 'bg-red-950/40');
+                    msg.innerText = 'เลือกเอเลี่ยนที่มี ตาเดียว ทั้งหมดเพื่อผ่านด่าน';
+                    msg.className = 'text-center text-xs sm:text-sm font-semibold text-slate-300';
+                }, 1800);
+            }
+        }
+
+        function initLvl4Pool() {
+            const pool = document.getElementById('stepPool');
+            pool.innerHTML = '';
+            // Shuffle step options for interactivity
+            const shuffled = [...lvl4StepsData].sort(() => Math.random() - 0.5);
+            shuffled.forEach(step => {
+                const b = document.createElement('button');
+                b.id = `opt-${step.id}`;
+                b.onclick = () => chooseLvl4Step(step.id);
+                b.className = "p-3.5 bg-slate-950 hover:bg-slate-800 border-2 border-slate-700 hover:border-cyan-400 rounded-2xl text-left transition flex items-center space-x-3 group";
+                b.innerHTML = `
+                    <div class="w-9 h-9 rounded-xl bg-slate-900 group-hover:bg-cyan-950 flex items-center justify-center text-cyan-400 text-lg border border-slate-800">
+                        <i class="fa-solid ${step.icon}"></i>
+                    </div>
+                    <span class="text-xs sm:text-sm text-slate-200 font-medium">${step.text}</span>
+                `;
+                pool.appendChild(b);
+            });
+        }
+
+        function chooseLvl4Step(stepId) {
+            playSound('click');
+            if (lvl4CurrentOrder.length >= 4) return;
+            if (lvl4CurrentOrder.includes(stepId)) return;
+
+            lvl4CurrentOrder.push(stepId);
+            document.getElementById(`opt-${stepId}`).classList.add('opacity-30', 'pointer-events-none');
+
+            const slotIndex = lvl4CurrentOrder.length;
+            const slot = document.getElementById(`slot-${slotIndex}`);
+            const stepObj = lvl4StepsData.find(s => s.id === stepId);
+
+            slot.className = "bg-emerald-950/60 border-2 border-emerald-400 rounded-2xl p-3 min-h-[70px] flex flex-col justify-center items-center text-center relative animate-pulse-glow";
+            slot.querySelector('.slot-text').innerHTML = `<span class="text-xs font-bold text-emerald-300">${stepObj.text}</span>`;
+
+            if (lvl4CurrentOrder.length === 4) {
+                document.getElementById('lvl4Submit').disabled = false;
+            }
+        }
+
+        function resetLvl4() {
+            playSound('click');
+            lvl4CurrentOrder = [];
+            for (let i = 1; i <= 4; i++) {
+                const slot = document.getElementById(`slot-${i}`);
+                slot.className = "bg-slate-950/80 border-2 border-dashed border-emerald-500/50 rounded-2xl p-3 min-h-[70px] flex flex-col justify-center items-center text-center relative";
+                slot.querySelector('.slot-text').innerText = "ว่างเปล่า";
+            }
+            document.getElementById('lvl4Submit').disabled = true;
+            initLvl4Pool();
+        }
+
+        function checkLvl4() {
+            const isCorrect = JSON.stringify(lvl4CurrentOrder) === JSON.stringify(lvl4CorrectOrder);
+            if (isCorrect) {
+                updateEnergy(80);
+                playSound('success');
+                setTimeout(() => {
+                    openCTModal(
+                        'fa-list-ol',
+                        'Algorithm Design (การออกแบบขั้นตอน)',
+                        'การออกแบบขั้นตอน',
+                        '<strong>Algorithm Design</strong> คือการวางลำดับขั้นตอนอย่างเป็นขั้นตอน ชัดเจน และต่อเนื่อง (เช่น 1. กางล้อ ➔ 2. ลดความเร็ว ➔ 3. แตะพื้นดาว ➔ 4. ดับเครื่อง) หากสลับขั้นตอน ยานอาจตกหรือเกิดอุบัติเหตุได้!'
+                    );
+                }, 600);
+            } else {
+                playSound('error');
+                for (let i = 1; i <= 4; i++) {
+                    const slot = document.getElementById(`slot-${i}`);
+                    slot.classList.add('border-red-500', 'bg-red-950/40');
+                }
+                setTimeout(() => {
+                    alert('❌ ลำดับขั้นตอนยังไม่ถูกต้อง! ยานลงจอดไม่ปลอดภัย ลองคิดทบทวนแล้วเรียงใหม่อีกครั้ง');
+                    resetLvl4();
+                }, 400);
+            }
+        }
+
+        function checkLvl5(isCorrect, btn) {
+            playSound('click');
+            const feedback = document.getElementById('lvl5Feedback');
+            
+            if (isCorrect) {
+                btn.className = "debug-option w-full p-4 bg-emerald-950/80 border-2 border-emerald-400 rounded-2xl text-left transition flex items-center justify-between";
+                feedback.innerHTML = '<span class="text-emerald-400 font-bold">✨ ถูกต้องที่สุด! แก้ไข Bug สำเร็จ ล็อกประตูเปิดแล้ว!</span>';
+                updateEnergy(100);
+                playSound('win');
+                setTimeout(() => {
+                    openCTModal(
+                        'fa-bug',
+                        'Debugging (การแก้ไขจุดบกพร่อง)',
+                        'การแก้ไขจุดบกพร่อง',
+                        '<strong>Debugging</strong> คือกระบวนการค้นหาข้อผิดพลาด (Bug) ในโปรแกรมหรือลำดับความคิด และทำการแก้ไขให้ถูกต้อง การสแกนลายนิ้วมือต้องเกิดขึ้นก่อนการใส่รหัสและเปิดประตู การแก้ Bug ช่วยให้ระบบทำงานได้อย่างสมบูรณ์แบบ!'
+                    );
+                }, 800);
+            } else {
+                playSound('error');
+                btn.className = "debug-option w-full p-4 bg-red-950/80 border-2 border-red-500 rounded-2xl text-left transition flex items-center justify-between";
+                feedback.innerHTML = '<span class="text-red-400 font-bold">❌ ยังคงมี Bug อยู่! ประตูยังเปิดไม่ได้ ลองพิจารณาตัวเลือกอื่น</span>';
+                setTimeout(() => {
+                    btn.className = "debug-option w-full p-4 bg-slate-950 hover:bg-slate-800 border-2 border-slate-700 rounded-2xl text-left transition flex items-center justify-between group";
+                    feedback.innerHTML = '';
+                }, 2000);
+            }
+        }
+
+        function openCTModal(iconClass, title, subhead, content) {
+            document.getElementById('modalIcon').className = `fa-solid ${iconClass}`;
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalSubhead').innerText = `ผ่านด่านสำเร็จ : ${subhead}`;
+            document.getElementById('modalContent').innerHTML = content;
+
+            const modal = document.getElementById('ctModal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.querySelector('div').classList.remove('scale-95');
+            modal.querySelector('div').classList.add('scale-100');
+        }
+
+        function closeModalAndNext() {
+            playSound('click');
+            const modal = document.getElementById('ctModal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modal.querySelector('div').classList.remove('scale-100');
+            modal.querySelector('div').classList.add('scale-95');
+
+            currentLevel++;
+            if (currentLevel === 2) {
+                showScreen('screenLvl2');
+            } else if (currentLevel === 3) {
+                showScreen('screenLvl3');
+            } else if (currentLevel === 4) {
+                initLvl4Pool();
+                showScreen('screenLvl4');
+            } else if (currentLevel === 5) {
+                showScreen('screenLvl5');
+            } else if (currentLevel === 6) {
+                showScreen('screenVictory');
+            }
+        }
+
+        function resetEntireGame() {
+            playSound('click');
+            currentLevel = 0;
+            energyProgress = 0;
+            lvl1Repairs = { engine: false, wing: false, comms: false };
+            lvl2Selected.clear();
+            lvl3Selected.clear();
+            lvl4CurrentOrder = [];
+
+            // Reset Lvl 1 UI
+            ['engine', 'wing', 'comms'].forEach(p => {
+                const b = document.getElementById(`repair-btn-${p}`);
+                b.className = "absolute p-3 sm:p-4 rounded-2xl bg-red-500/20 hover:bg-red-500/40 border-2 border-red-500 text-red-400 font-bold flex items-center space-x-2 transition transform hover:scale-110 active:scale-95 animate-fire";
+            });
+            document.getElementById('repair-btn-engine').innerHTML = `<i class="fa-solid fa-fire text-xl text-amber-400"></i><span class="text-xs sm:text-sm text-white font-bold">1. เครื่องยนต์</span>`;
+            document.getElementById('repair-btn-wing').innerHTML = `<i class="fa-solid fa-triangle-exclamation text-xl text-amber-400"></i><span class="text-xs sm:text-sm text-white font-bold">2. ปีกยาน</span>`;
+            document.getElementById('repair-btn-comms').innerHTML = `<i class="fa-solid fa-tower-broadcast text-xl text-amber-400"></i><span class="text-xs sm:text-sm text-white font-bold">3. ระบบสื่อสาร</span>`;
+            document.getElementById('lvl1Counter').innerText = '0 / 3';
+
+            // Reset Lvl 2 UI
+            document.querySelectorAll('.signal-card').forEach(c => {
+                c.classList.remove('border-emerald-400', 'bg-emerald-950/40', 'border-red-500', 'bg-red-950/40');
+                c.classList.add('border-slate-700');
+            });
+            document.getElementById('lvl2Counter').innerText = '0 / 2';
+
+            // Reset Lvl 3 UI
+            document.querySelectorAll('.alien-card').forEach(c => {
+                c.classList.remove('border-emerald-400', 'bg-emerald-950/50', 'border-red-500', 'bg-red-950/40');
+                c.classList.add('border-slate-700');
+            });
+            document.getElementById('lvl3Counter').innerText = '0 / 2';
+
+            updateEnergy(0);
+            showScreen('screenWelcome');
+        }
+    </script>
+</body>
+</html>
